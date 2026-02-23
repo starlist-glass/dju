@@ -2,54 +2,47 @@ import requests
 from bs4 import BeautifulSoup
 import json
 
-def get_dju_diet():
-    # 대전대 식단 통합 페이지
-    url = "https://www.dju.ac.kr/dju/cm/cntnts/cntntsView.do?mi=7064&cntntsId=4222"
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    }
-    
+def get_diet_data(url):
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
     try:
         response = requests.get(url, headers=headers, timeout=10)
         response.encoding = 'utf-8'
         soup = BeautifulSoup(response.text, 'html.parser')
         
-        diet_results = {}
-        target_cafeterias = ["5생활관", "2생활관", "혜화문화관"]
-        
-        # 모든 테이블을 가져와서 제목(caption)이나 주변 텍스트로 식당 찾기
-        all_tables = soup.find_all('table')
-        
-        for name in target_cafeterias:
-            found_text = "정보가 없습니다."
-            for table in all_tables:
-                # 테이블 내부나 바로 위 텍스트에 식당 이름이 있는지 확인
-                parent_text = table.parent.get_text()
-                table_text = table.get_text()
-                
-                if name in parent_text or name in table_text:
-                    # 실제 메뉴가 적힌 텍스트만 추출
-                    rows = table.find_all('tr')
-                    menu_lines = []
-                    for row in rows:
-                        cells = row.find_all(['td', 'th'])
-                        line = " | ".join([c.get_text(strip=True) for c in cells])
-                        if line: menu_lines.append(line)
-                    
-                    if menu_lines:
-                        found_text = "\n".join(menu_lines)
-                        break
+        # 식단이 들어있는 테이블 찾기
+        table = soup.select_one('table.board-list')
+        if not table:
+            table = soup.select_one('table') # board-list가 없을 경우 대비
             
-            diet_results[name] = found_text
+        if table:
+            # 줄바꿈을 유지하며 텍스트 추출
+            rows = []
+            for tr in table.find_all('tr'):
+                cells = [td.get_text(strip=True) for td in tr.find_all(['th', 'td'])]
+                rows.append(" | ".join(cells))
+            return "\n".join(rows)
+        return "식단 정보가 없습니다."
+    except:
+        return "데이터를 불러오는 중 오류가 발생했습니다."
 
-        # JSON 저장
-        with open('diet.json', 'w', encoding='utf-8') as f:
-            json.dump(diet_results, f, ensure_ascii=False, indent=4)
-        
-        print("정상적으로 데이터를 가져왔습니다.")
-
-    except Exception as e:
-        print(f"오류 발생: {e}")
+def main():
+    # 보내주신 식당별 개별 URL
+    urls = {
+        "2생활관": "https://www.dju.ac.kr/dju/cm/cntnts/cntntsView.do?cntntsId=4223&mi=7065",
+        "5생활관": "https://www.dju.ac.kr/dju/cm/cntnts/cntntsView.do?cntntsId=4224&mi=7066",
+        "혜화문화관": "https://www.dju.ac.kr/dju/cm/cntnts/cntntsView.do?cntntsId=4222&mi=7064"
+    }
+    
+    final_diet = {}
+    
+    for name, url in urls.items():
+        print(f"{name} 데이터를 가져오는 중...")
+        final_diet[name] = get_diet_data(url)
+    
+    # JSON 파일로 저장
+    with open('diet.json', 'w', encoding='utf-8') as f:
+        json.dump(final_diet, f, ensure_ascii=False, indent=4)
+    print("모든 식단 업데이트 완료!")
 
 if __name__ == "__main__":
-    get_dju_diet()
+    main()
