@@ -3,45 +3,53 @@ from bs4 import BeautifulSoup
 import json
 
 def get_dju_diet():
+    # 대전대 식단 통합 페이지
     url = "https://www.dju.ac.kr/dju/cm/cntnts/cntntsView.do?mi=7064&cntntsId=4222"
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    }
     
     try:
-        response = requests.get(url, headers=headers)
-        response.encoding = 'utf-8' # 한글 깨짐 방지
+        response = requests.get(url, headers=headers, timeout=10)
+        response.encoding = 'utf-8'
         soup = BeautifulSoup(response.text, 'html.parser')
         
-        # 모든 테이블 가져오기
-        tables = soup.find_all('table')
         diet_results = {}
+        target_cafeterias = ["5생활관", "2생활관", "혜화문화관"]
         
-        # 대전대 식단 페이지의 식당 순서: 5생활관, 2생활관, 혜화문화관
-        names = ["5생활관", "2생활관", "혜화문화관"]
+        # 모든 테이블을 가져와서 제목(caption)이나 주변 텍스트로 식당 찾기
+        all_tables = soup.find_all('table')
         
-        # 실제 식단이 들어있는 테이블만 추출 (보통 클래스에 board- 가 들어감)
-        valid_tables = [t for t in tables if 'board' in str(t.get('class', ''))]
-
-        for i, name in enumerate(names):
-            if i < len(valid_tables):
-                # 텍스트 추출 및 불필요한 공백 정리
-                text = valid_tables[i].get_text(separator='\n').strip()
-                clean_text = "\n".join([line.strip() for line in text.split('\n') if line.strip()])
+        for name in target_cafeterias:
+            found_text = "정보가 없습니다."
+            for table in all_tables:
+                # 테이블 내부나 바로 위 텍스트에 식당 이름이 있는지 확인
+                parent_text = table.parent.get_text()
+                table_text = table.get_text()
                 
-                # 만약 내용이 너무 짧으면(예: "데이터가 없습니다") 처리
-                if len(clean_text) < 5:
-                    diet_results[name] = "이번 주 식단 업데이트 전이거나 정보가 없습니다."
-                else:
-                    diet_results[name] = clean_text
-            else:
-                diet_results[name] = "식단을 찾을 수 없습니다."
+                if name in parent_text or name in table_text:
+                    # 실제 메뉴가 적힌 텍스트만 추출
+                    rows = table.find_all('tr')
+                    menu_lines = []
+                    for row in rows:
+                        cells = row.find_all(['td', 'th'])
+                        line = " | ".join([c.get_text(strip=True) for c in cells])
+                        if line: menu_lines.append(line)
+                    
+                    if menu_lines:
+                        found_text = "\n".join(menu_lines)
+                        break
+            
+            diet_results[name] = found_text
 
+        # JSON 저장
         with open('diet.json', 'w', encoding='utf-8') as f:
             json.dump(diet_results, f, ensure_ascii=False, indent=4)
-            
-        print("업데이트 완료!")
+        
+        print("정상적으로 데이터를 가져왔습니다.")
 
     except Exception as e:
-        print(f"에러: {e}")
+        print(f"오류 발생: {e}")
 
 if __name__ == "__main__":
     get_dju_diet()
