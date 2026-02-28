@@ -7,9 +7,9 @@ app = Flask(__name__)
 
 # 대전대 학식 URL 목록
 MENU_URLS = {
-    "학생식당 (1 URL)": "https://www.dju.ac.kr/dju/cm/cntnts/cntntsView.do?mi=7064&cntntsId=4222",
-    "교직원식당 (2 URL)": "https://www.dju.ac.kr/dju/cm/cntnts/cntntsView.do?cntntsId=4223&mi=7065",
-    "기숙사식당 (3 URL)": "https://www.dju.ac.kr/dju/cm/cntnts/cntntsView.do?cntntsId=4224&mi=7066"
+    "혜화문화관식당 (1 URL)": "https://www.dju.ac.kr/dju/cm/cntnts/cntntsView.do?mi=7064&cntntsId=4222",
+    "재학생생활관식당 (2 URL)": "https://www.dju.ac.kr/dju/cm/cntnts/cntntsView.do?cntntsId=4223&mi=7065",
+    "신입생기숙사식당 (3 URL)": "https://www.dju.ac.kr/dju/cm/cntnts/cntntsView.do?cntntsId=4224&mi=7066"
 }
 
 def get_todays_menu():
@@ -77,3 +77,4 @@ def index():
 if __name__ == '__main__':
     # 서버 실행 (포트 5000)
     app.run(debug=True)
+
